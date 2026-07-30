@@ -202,12 +202,10 @@ vsce login <publisher-id>
 vsce publish
 ```
 
-Before publishing, replace this placeholder in `package.json`:
+Before publishing, make sure `package.json` contains your real Visual Studio Marketplace publisher ID:
 
 ```json
 {
-  "publisher": "local-dev"
+  "publisher": "ZiYyun"
 }
 ```
-
-with your real Visual Studio Marketplace publisher ID.
