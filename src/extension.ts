@@ -9,6 +9,14 @@ type Template = {
   source?: string;
 };
 
+type MirrorStatus = {
+  name: string;
+  url: string;
+  ok: boolean;
+  ms?: number;
+  error?: string;
+};
+
 class FormatterMissingError extends Error {
   constructor(public readonly commands: string[]) {
     super(`No Nix formatter was found in PATH. Tried: ${commands.join(', ')}.`);
@@ -17,20 +25,25 @@ class FormatterMissingError extends Error {
 
 const wikiTemplateStateKey = 'nixLanguageTools.wikiTemplates';
 const wikiTemplateFirstActivationKey = 'nixLanguageTools.didFetchWikiTemplates';
-const chineseMirrorStateKey = 'nixLanguageTools.chineseMirrorUrls';
+const chineseMirrorStateKey = 'nixLanguageTools.chineseMirrorStatuses';
 const nixfmtExtensionId = 'brettm12345.nixfmt-vscode';
 const nixfmtMarketplaceUrl = 'https://marketplace.visualstudio.com/items?itemName=brettm12345.nixfmt-vscode';
 const nixosFormatterSnippet = 'environment.systemPackages = with pkgs; [\n  nixfmt-rfc-style\n];';
 const homeManagerFormatterSnippet = 'home.packages = with pkgs; [\n  nixfmt-rfc-style\n];';
+const officialNixCacheUrl = 'https://cache.nixos.org/';
+const officialNixCachePublicKey = 'cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=';
+
 const chineseLanguagePackIds = [
   'MS-CEINTL.vscode-language-pack-zh-hans',
   'MS-CEINTL.vscode-language-pack-zh-hant'
 ];
+
 const chineseMirrorSources = [
   'https://wiki.nixos.org/w/index.php?title=China&action=raw',
   'https://mirrors.tuna.tsinghua.edu.cn/help/nix-channels/',
   'https://mirrors.ustc.edu.cn/help/nix-channels.html'
 ];
+
 const fallbackChineseMirrorUrls = [
   'https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store',
   'https://mirrors.ustc.edu.cn/nix-channels/store',
@@ -82,17 +95,34 @@ const builtInTemplates: Template[] = [
   },
   {
     label: 'Built-in: NixOS Module',
-    description: 'NixOS configuration module fallback',
-    body: `{ config, pkgs, ... }:
+    description: 'Official NixOS module structure fallback',
+    body: `{ config, lib, pkgs, ... }:
 
 {
+  # Other modules included in this evaluation.
   imports = [
+    # ./hardware-configuration.nix
+    # ./another-module.nix
   ];
 
-  environment.systemPackages = with pkgs; [
-  ];
+  # Option declarations. Uncomment when this module exposes settings.
+  options = {
+    # services.example.enable = lib.mkEnableOption "example service";
+    # services.example.package = lib.mkPackageOption pkgs "hello" { };
+  };
 
-  services.openssh.enable = true;
+  # Option definitions. Put the actual system configuration here.
+  config = {
+    environment.systemPackages = with pkgs; [
+      # hello
+    ];
+
+    # services.openssh.enable = true;
+  };
+
+  meta = {
+    # maintainers = with lib.maintainers; [ ];
+  };
 }
 `
   },
@@ -233,7 +263,7 @@ export function activate(context: vscode.ExtensionContext) {
     refreshWikiTemplates
   );
   void refreshWikiTemplatesOnFirstActivation(context);
-  void refreshChineseMirrorUrls(context);
+  void refreshChineseMirrorStatuses(context);
 }
 
 export function deactivate() {
@@ -262,33 +292,41 @@ async function pickTemplate(context: vscode.ExtensionContext): Promise<Template 
 
 async function buildTemplateBody(context: vscode.ExtensionContext, template: Template): Promise<string> {
   const hasChineseLanguagePack = isChineseLanguagePackInstalled();
-  const mirrorUrls = hasChineseLanguagePack ? await getChineseMirrorUrls(context) : [];
-  const helpLines = getTemplateHelpLines(template, hasChineseLanguagePack, mirrorUrls);
+  const mirrorStatuses = hasChineseLanguagePack ? await getChineseMirrorStatuses(context) : [];
+  const helpLines = getTemplateHelpLines(template, hasChineseLanguagePack);
   const helpBlock = helpLines.map((line) => `# ${line}`).join('\n');
+  const body = hasChineseLanguagePack
+    ? applyChineseTemplateEnhancements(template, template.body, mirrorStatuses)
+    : template.body;
 
-  return `${helpBlock}\n\n${template.body}`;
+  return `${helpBlock}\n\n${body}`;
 }
 
 function isChineseLanguagePackInstalled(): boolean {
   return chineseLanguagePackIds.some((id) => vscode.extensions.getExtension(id) !== undefined);
 }
 
-async function getChineseMirrorUrls(context: vscode.ExtensionContext): Promise<string[]> {
-  const cached = context.globalState.get<string[]>(chineseMirrorStateKey, []);
+async function getChineseMirrorStatuses(context: vscode.ExtensionContext): Promise<MirrorStatus[]> {
+  const cached = context.globalState.get<MirrorStatus[]>(chineseMirrorStateKey, []);
   if (cached.length > 0) {
     return cached;
   }
 
   try {
-    const fetched = await fetchChineseMirrorUrls();
+    const fetched = await fetchChineseMirrorStatuses();
     await context.globalState.update(chineseMirrorStateKey, fetched);
     return fetched;
   } catch {
-    return fallbackChineseMirrorUrls;
+    return fallbackChineseMirrorUrls.map((url) => ({
+      name: getMirrorName(url),
+      url,
+      ok: false,
+      error: 'not tested'
+    }));
   }
 }
 
-function getTemplateHelpLines(template: Template, hasChineseLanguagePack: boolean, mirrorUrls: string[]): string[] {
+function getTemplateHelpLines(template: Template, hasChineseLanguagePack: boolean): string[] {
   const label = template.label.replace(/^Built-in:\s*/u, '').replace(/^Wiki:\s*/u, '');
 
   if (!hasChineseLanguagePack) {
@@ -300,17 +338,13 @@ function getTemplateHelpLines(template: Template, hasChineseLanguagePack: boolea
   }
 
   const lines = [
-    `Nix Forge 模板：${label}`,
+    `Nix Forge \u6a21\u677f\uff1a${label}`,
     ...getChineseTemplateUsageLines(template),
-    '换源提示：NixOS 中通常改 nix.settings.substituters；独立 Nix 可改 /etc/nix/nix.conf 或 ~/.config/nix/nix.conf 的 substituters。'
+    'NixOS \u6362\u6e90\u5199\u5728 nix.settings.substituters\uff1b\u72ec\u7acb Nix \u5199\u5728 /etc/nix/nix.conf \u6216 ~/.config/nix/nix.conf \u7684 substituters\u3002'
   ];
 
   if (template.label.includes('Flake')) {
-    lines.push('Flake 输入源在 inputs.nixpkgs.url 里改；二进制缓存源不在 inputs 里改。');
-  }
-
-  if (mirrorUrls.length > 0) {
-    lines.push(`常用二进制缓存镜像：${mirrorUrls.slice(0, 3).join(' , ')}`);
+    lines.push('Flake \u7684 nixpkgs \u8f93\u5165\u5728 inputs.nixpkgs.url \u91cc\u6539\uff1b\u4e8c\u8fdb\u5236\u7f13\u5b58\u6e90\u5728 nixConfig.substituters \u91cc\u6539\u3002');
   }
 
   return lines;
@@ -319,43 +353,107 @@ function getTemplateHelpLines(template: Template, hasChineseLanguagePack: boolea
 function getChineseTemplateUsageLines(template: Template): string[] {
   if (template.label.includes('Flake')) {
     return [
-      '把 description 改成项目说明，把 system 改成你的平台，例如 x86_64-linux 或 aarch64-linux。',
-      '在 packages/devShells 里替换默认包和开发工具。'
+      '\u628a description \u6539\u6210\u9879\u76ee\u8bf4\u660e\uff0c\u628a system \u6539\u6210\u4f60\u7684\u5e73\u53f0\uff0c\u4f8b\u5982 x86_64-linux \u6216 aarch64-linux\u3002',
+      '\u5728 packages/devShells \u91cc\u66ff\u6362\u9ed8\u8ba4\u5305\u548c\u5f00\u53d1\u5de5\u5177\u3002'
     ];
   }
 
   if (template.label.includes('NixOS Module')) {
     return [
-      '把系统服务、packages 和 imports 改成你自己的模块内容。',
-      '这个文件通常被 configuration.nix 或 flake.nix 的 nixosConfigurations.modules 引用。'
+      '\u8fd9\u662f\u5b98\u65b9 NixOS module \u7ed3\u6784\uff1aimports \u5f15\u5165\u6a21\u5757\uff0coptions \u58f0\u660e\u53ef\u914d\u7f6e\u9879\uff0cconfig \u5199\u5b9e\u9645\u914d\u7f6e\uff0cmeta \u5199\u7ef4\u62a4\u4fe1\u606f\u3002',
+      '\u5982\u679c\u53ea\u662f\u666e\u901a configuration.nix\uff0c\u53ef\u4ee5\u4fdd\u7559 config \u91cc\u7684\u914d\u7f6e\uff0c\u628a\u6682\u65f6\u4e0d\u7528\u7684 options/meta \u793a\u4f8b\u7ee7\u7eed\u6ce8\u91ca\u6389\u3002'
     ];
   }
 
   if (template.label.includes('Home Manager')) {
     return [
-      '把 username、homeDirectory 和 stateVersion 改成你的实际用户配置。',
-      '常用软件写在 home.packages，程序配置写在 programs.*。'
+      '\u628a username\u3001homeDirectory \u548c stateVersion \u6539\u6210\u4f60\u7684\u5b9e\u9645\u7528\u6237\u914d\u7f6e\u3002',
+      '\u5e38\u7528\u8f6f\u4ef6\u5199\u5728 home.packages\uff0c\u7a0b\u5e8f\u914d\u7f6e\u5199\u5728 programs.*\u3002'
     ];
   }
 
   if (template.label.includes('Package Derivation')) {
     return [
-      '把 pname、version、src、hash 和 meta 改成目标软件包的信息。',
-      'hash 可以先留空构建一次，再用 Nix 给出的正确 sha256 替换。'
+      '\u628a pname\u3001version\u3001src\u3001hash \u548c meta \u6539\u6210\u76ee\u6807\u8f6f\u4ef6\u5305\u7684\u4fe1\u606f\u3002',
+      'hash \u53ef\u4ee5\u5148\u7559\u7a7a\u6784\u5efa\u4e00\u6b21\uff0c\u518d\u7528 Nix \u7ed9\u51fa\u7684\u6b63\u786e sha256 \u66ff\u6362\u3002'
     ];
   }
 
   if (template.label.includes('Dev Shell')) {
     return [
-      '把 packages 改成项目需要的命令行工具和依赖。',
-      'shellHook 适合放进入开发环境时要执行的轻量提示或环境变量。'
+      '\u628a packages \u6539\u6210\u9879\u76ee\u9700\u8981\u7684\u547d\u4ee4\u884c\u5de5\u5177\u548c\u4f9d\u8d56\u3002',
+      'shellHook \u9002\u5408\u653e\u8fdb\u5165\u5f00\u53d1\u73af\u5883\u65f6\u8981\u6267\u884c\u7684\u8f7b\u91cf\u63d0\u793a\u6216\u73af\u5883\u53d8\u91cf\u3002'
     ];
   }
 
   return [
-    '根据当前文件用途替换占位符、路径、包名、版本号和 hash。',
-    '插入后建议运行格式化并检查 Nix 语法。'
+    '\u6839\u636e\u5f53\u524d\u6587\u4ef6\u7528\u9014\u66ff\u6362\u5360\u4f4d\u7b26\u3001\u8def\u5f84\u3001\u5305\u540d\u3001\u7248\u672c\u53f7\u548c hash\u3002',
+    '\u63d2\u5165\u540e\u5efa\u8bae\u8fd0\u884c\u683c\u5f0f\u5316\u5e76\u68c0\u67e5 Nix \u8bed\u6cd5\u3002'
   ];
+}
+
+function applyChineseTemplateEnhancements(template: Template, body: string, mirrors: MirrorStatus[]): string {
+  if (template.label.includes('NixOS Module')) {
+    return body.replace('  config = {\n', `  config = {\n${buildNixosMirrorBlock(mirrors, 4)}\n`);
+  }
+
+  if (template.label.includes('Flake')) {
+    return body.replace('  inputs = {\n', `${buildFlakeMirrorBlock(mirrors, 2)}\n\n  inputs = {\n`);
+  }
+
+  return body;
+}
+
+function buildNixosMirrorBlock(mirrors: MirrorStatus[], indent: number): string {
+  return `${' '.repeat(indent)}nix.settings = {
+${buildSubstitutersBlock(mirrors, indent + 2)}
+
+${' '.repeat(indent + 2)}# cache.nixos.org \u5b98\u65b9\u7f13\u5b58\u7684\u516c\u94a5\uff1b\u5982\u679c\u53ea\u7528\u5b98\u65b9\u548c\u5176\u540c\u6b65\u955c\u50cf\uff0c\u8fd9\u4e00\u884c\u4e0d\u8981\u5220\u3002
+${' '.repeat(indent + 2)}trusted-public-keys = [
+${' '.repeat(indent + 4)}"${officialNixCachePublicKey}"
+${' '.repeat(indent + 2)}];
+${' '.repeat(indent)}};`;
+}
+
+function buildFlakeMirrorBlock(mirrors: MirrorStatus[], indent: number): string {
+  return `${' '.repeat(indent)}nixConfig = {
+${buildSubstitutersBlock(mirrors, indent + 2)}
+
+${' '.repeat(indent + 2)}extra-trusted-public-keys = [
+${' '.repeat(indent + 4)}"${officialNixCachePublicKey}"
+${' '.repeat(indent + 2)}];
+${' '.repeat(indent)}};`;
+}
+
+function buildSubstitutersBlock(mirrors: MirrorStatus[], indent: number): string {
+  const best = mirrors
+    .filter((mirror) => mirror.ok && typeof mirror.ms === 'number')
+    .sort((left, right) => (left.ms ?? Number.MAX_SAFE_INTEGER) - (right.ms ?? Number.MAX_SAFE_INTEGER))[0];
+  const activeMirror = best?.url;
+  const lines = [
+    `${' '.repeat(indent)}# Nix Forge \u5df2\u5c1d\u8bd5\u6d4b\u901f\u4ee5\u4e0b\u56fd\u5185\u7f13\u5b58\u6e90\uff1b\u5019\u9009\u9879\u4fdd\u7559\u4e3a\u6ce8\u91ca\uff0c\u4fbf\u4e8e\u624b\u52a8\u5207\u6362\u3002`,
+    `${' '.repeat(indent)}# \u5b98\u65b9 cache.nixos.org \u4f5c\u4e3a\u4fdd\u5e95\u6e90\uff0c\u59cb\u7ec8\u542f\u7528\u3002`,
+    `${' '.repeat(indent)}substituters = [`
+  ];
+
+  for (const mirror of mirrors) {
+    const status = mirror.ok && mirror.ms !== undefined
+      ? `${mirror.ms}ms`
+      : `error${mirror.error ? `: ${mirror.error}` : ''}`;
+    const marker = mirror.url === activeMirror ? 'enabled best' : 'candidate';
+    lines.push(`${' '.repeat(indent + 2)}# ${status.padEnd(16)} ${mirror.name} (${marker})`);
+    if (mirror.url === activeMirror) {
+      lines.push(`${' '.repeat(indent + 2)}"${mirror.url}"`);
+    } else {
+      lines.push(`${' '.repeat(indent + 2)}# "${mirror.url}"`);
+    }
+    lines.push(`${' '.repeat(indent + 2)}#`);
+  }
+
+  lines.push(`${' '.repeat(indent + 2)}"${officialNixCacheUrl}"`);
+  lines.push(`${' '.repeat(indent)}];`);
+
+  return lines.join('\n');
 }
 
 async function formatActiveDocument(): Promise<void> {
@@ -386,7 +484,6 @@ async function formatNixDocument(document: vscode.TextDocument): Promise<string>
   const configuredArgs = config.get<string[]>('formatter.args', []);
   const useBuiltInFallback = config.get<boolean>('formatter.useBuiltInFallback', true);
   const text = document.getText();
-
   const candidates = configuredCommand === 'auto'
     ? ['nixfmt', 'nixpkgs-fmt', 'alejandra']
     : [configuredCommand];
@@ -585,7 +682,7 @@ function getFullRange(document: vscode.TextDocument): vscode.Range {
 async function showFormatterError(error: unknown): Promise<void> {
   if (error instanceof FormatterMissingError) {
     const action = await vscode.window.showErrorMessage(
-      `Nix Forge could not find a formatter in PATH. Install nixfmt-rfc-style, nixpkgs-fmt, or alejandra, then reload VS Code.`,
+      'Nix Forge could not find a formatter in PATH. Install nixfmt-rfc-style, nixpkgs-fmt, or alejandra, then reload VS Code.',
       'Open formatter extension',
       'Open settings'
     );
@@ -641,23 +738,92 @@ async function refreshWikiTemplatesOnFirstActivation(context: vscode.ExtensionCo
   }
 }
 
-async function refreshChineseMirrorUrls(context: vscode.ExtensionContext): Promise<void> {
+async function refreshChineseMirrorStatuses(context: vscode.ExtensionContext): Promise<void> {
   try {
-    const urls = await fetchChineseMirrorUrls();
-    await context.globalState.update(chineseMirrorStateKey, urls);
+    const statuses = await fetchChineseMirrorStatuses();
+    await context.globalState.update(chineseMirrorStateKey, statuses);
   } catch {
-    if (context.globalState.get<string[]>(chineseMirrorStateKey, []).length === 0) {
-      await context.globalState.update(chineseMirrorStateKey, fallbackChineseMirrorUrls);
+    if (context.globalState.get<MirrorStatus[]>(chineseMirrorStateKey, []).length === 0) {
+      await context.globalState.update(
+        chineseMirrorStateKey,
+        fallbackChineseMirrorUrls.map((url) => ({
+          name: getMirrorName(url),
+          url,
+          ok: false,
+          error: 'not tested'
+        }))
+      );
     }
   }
 }
 
-async function fetchChineseMirrorUrls(): Promise<string[]> {
-  const pages = await Promise.all(chineseMirrorSources.map((source) => fetchText(source)));
+async function fetchChineseMirrorStatuses(): Promise<MirrorStatus[]> {
+  const pages = await Promise.all(chineseMirrorSources.map((source) => fetchText(source).catch(() => '')));
   const urls = pages.flatMap((page) => extractMatches(page, /https:\/\/[^\s"'<>|}]+\/nix-channels\/store/g));
-  const uniqueUrls = Array.from(new Set(urls.map((url) => url.replace(/[),.;]+$/u, ''))));
+  const uniqueUrls = Array.from(new Set([...urls, ...fallbackChineseMirrorUrls].map((url) => url.replace(/[),.;]+$/u, ''))));
+  const statuses = await Promise.all(uniqueUrls.map((url) => testMirror(url)));
 
-  return uniqueUrls.length > 0 ? uniqueUrls : fallbackChineseMirrorUrls;
+  return statuses.sort((left, right) => {
+    if (left.ok !== right.ok) {
+      return left.ok ? -1 : 1;
+    }
+
+    return (left.ms ?? Number.MAX_SAFE_INTEGER) - (right.ms ?? Number.MAX_SAFE_INTEGER);
+  });
+}
+
+function testMirror(url: string): Promise<MirrorStatus> {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const request = https.get(`${url.replace(/\/$/u, '')}/nix-cache-info`, (response) => {
+      response.resume();
+      response.on('end', () => {
+        const ok = response.statusCode !== undefined && response.statusCode >= 200 && response.statusCode < 400;
+        resolve({
+          name: getMirrorName(url),
+          url,
+          ok,
+          ms: Date.now() - start,
+          error: ok ? undefined : `HTTP ${response.statusCode}`
+        });
+      });
+    });
+
+    request.setTimeout(3000, () => {
+      request.destroy();
+      resolve({
+        name: getMirrorName(url),
+        url,
+        ok: false,
+        error: 'timeout'
+      });
+    });
+    request.on('error', (error) => {
+      resolve({
+        name: getMirrorName(url),
+        url,
+        ok: false,
+        error: error.message
+      });
+    });
+  });
+}
+
+function getMirrorName(url: string): string {
+  if (url.includes('tuna.tsinghua')) {
+    return 'TUNA';
+  }
+  if (url.includes('ustc.edu.cn')) {
+    return 'USTC';
+  }
+  if (url.includes('sjtu.edu.cn')) {
+    return 'SJTUG';
+  }
+  if (url.includes('nju.edu.cn')) {
+    return 'NJU';
+  }
+
+  return new URL(url).hostname;
 }
 
 async function fetchWikiTemplates(): Promise<Template[]> {
