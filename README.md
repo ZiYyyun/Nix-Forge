@@ -47,7 +47,7 @@ Shortcut:
 Command Palette:
 
 ```text
-Nix: Insert Configuration Template
+Nix-Forge: Insert Configuration Template
 ```
 
 Built-in fallback templates include:

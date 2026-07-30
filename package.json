@@ -49,7 +49,7 @@
     "commands": [
       {
         "command": "nixLanguageTools.insertTemplate",
-        "title": "Nix: Insert Configuration Template",
+        "title": "Nix-Forge: Insert Configuration Template",
         "category": "Nix"
       },
       {
