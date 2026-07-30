@@ -17,10 +17,25 @@ class FormatterMissingError extends Error {
 
 const wikiTemplateStateKey = 'nixLanguageTools.wikiTemplates';
 const wikiTemplateFirstActivationKey = 'nixLanguageTools.didFetchWikiTemplates';
+const chineseMirrorStateKey = 'nixLanguageTools.chineseMirrorUrls';
 const nixfmtExtensionId = 'brettm12345.nixfmt-vscode';
 const nixfmtMarketplaceUrl = 'https://marketplace.visualstudio.com/items?itemName=brettm12345.nixfmt-vscode';
 const nixosFormatterSnippet = 'environment.systemPackages = with pkgs; [\n  nixfmt-rfc-style\n];';
 const homeManagerFormatterSnippet = 'home.packages = with pkgs; [\n  nixfmt-rfc-style\n];';
+const chineseLanguagePackIds = [
+  'MS-CEINTL.vscode-language-pack-zh-hans',
+  'MS-CEINTL.vscode-language-pack-zh-hant'
+];
+const chineseMirrorSources = [
+  'https://wiki.nixos.org/w/index.php?title=China&action=raw',
+  'https://mirrors.tuna.tsinghua.edu.cn/help/nix-channels/',
+  'https://mirrors.ustc.edu.cn/help/nix-channels.html'
+];
+const fallbackChineseMirrorUrls = [
+  'https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store',
+  'https://mirrors.ustc.edu.cn/nix-channels/store',
+  'https://mirror.sjtu.edu.cn/nix-channels/store'
+];
 
 const wikiSources = [
   {
@@ -169,9 +184,10 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
+    const body = await buildTemplateBody(context, selected);
     await editor.edit((editBuilder) => {
       for (const selection of editor.selections) {
-        editBuilder.replace(selection, selected.body);
+        editBuilder.replace(selection, body);
       }
     });
   });
@@ -217,6 +233,7 @@ export function activate(context: vscode.ExtensionContext) {
     refreshWikiTemplates
   );
   void refreshWikiTemplatesOnFirstActivation(context);
+  void refreshChineseMirrorUrls(context);
 }
 
 export function deactivate() {
@@ -241,6 +258,104 @@ async function pickTemplate(context: vscode.ExtensionContext): Promise<Template 
   );
 
   return picked?.template;
+}
+
+async function buildTemplateBody(context: vscode.ExtensionContext, template: Template): Promise<string> {
+  const hasChineseLanguagePack = isChineseLanguagePackInstalled();
+  const mirrorUrls = hasChineseLanguagePack ? await getChineseMirrorUrls(context) : [];
+  const helpLines = getTemplateHelpLines(template, hasChineseLanguagePack, mirrorUrls);
+  const helpBlock = helpLines.map((line) => `# ${line}`).join('\n');
+
+  return `${helpBlock}\n\n${template.body}`;
+}
+
+function isChineseLanguagePackInstalled(): boolean {
+  return chineseLanguagePackIds.some((id) => vscode.extensions.getExtension(id) !== undefined);
+}
+
+async function getChineseMirrorUrls(context: vscode.ExtensionContext): Promise<string[]> {
+  const cached = context.globalState.get<string[]>(chineseMirrorStateKey, []);
+  if (cached.length > 0) {
+    return cached;
+  }
+
+  try {
+    const fetched = await fetchChineseMirrorUrls();
+    await context.globalState.update(chineseMirrorStateKey, fetched);
+    return fetched;
+  } catch {
+    return fallbackChineseMirrorUrls;
+  }
+}
+
+function getTemplateHelpLines(template: Template, hasChineseLanguagePack: boolean, mirrorUrls: string[]): string[] {
+  const label = template.label.replace(/^Built-in:\s*/u, '').replace(/^Wiki:\s*/u, '');
+
+  if (!hasChineseLanguagePack) {
+    return [
+      `Nix Forge template: ${label}.`,
+      'Replace placeholder names, paths, packages, system values, hashes, and URLs before use.',
+      'For exact formatting, install nixfmt-rfc-style, nixpkgs-fmt, or alejandra in your Nix environment.'
+    ];
+  }
+
+  const lines = [
+    `Nix Forge 模板：${label}`,
+    ...getChineseTemplateUsageLines(template),
+    '换源提示：NixOS 中通常改 nix.settings.substituters；独立 Nix 可改 /etc/nix/nix.conf 或 ~/.config/nix/nix.conf 的 substituters。'
+  ];
+
+  if (template.label.includes('Flake')) {
+    lines.push('Flake 输入源在 inputs.nixpkgs.url 里改；二进制缓存源不在 inputs 里改。');
+  }
+
+  if (mirrorUrls.length > 0) {
+    lines.push(`常用二进制缓存镜像：${mirrorUrls.slice(0, 3).join(' , ')}`);
+  }
+
+  return lines;
+}
+
+function getChineseTemplateUsageLines(template: Template): string[] {
+  if (template.label.includes('Flake')) {
+    return [
+      '把 description 改成项目说明，把 system 改成你的平台，例如 x86_64-linux 或 aarch64-linux。',
+      '在 packages/devShells 里替换默认包和开发工具。'
+    ];
+  }
+
+  if (template.label.includes('NixOS Module')) {
+    return [
+      '把系统服务、packages 和 imports 改成你自己的模块内容。',
+      '这个文件通常被 configuration.nix 或 flake.nix 的 nixosConfigurations.modules 引用。'
+    ];
+  }
+
+  if (template.label.includes('Home Manager')) {
+    return [
+      '把 username、homeDirectory 和 stateVersion 改成你的实际用户配置。',
+      '常用软件写在 home.packages，程序配置写在 programs.*。'
+    ];
+  }
+
+  if (template.label.includes('Package Derivation')) {
+    return [
+      '把 pname、version、src、hash 和 meta 改成目标软件包的信息。',
+      'hash 可以先留空构建一次，再用 Nix 给出的正确 sha256 替换。'
+    ];
+  }
+
+  if (template.label.includes('Dev Shell')) {
+    return [
+      '把 packages 改成项目需要的命令行工具和依赖。',
+      'shellHook 适合放进入开发环境时要执行的轻量提示或环境变量。'
+    ];
+  }
+
+  return [
+    '根据当前文件用途替换占位符、路径、包名、版本号和 hash。',
+    '插入后建议运行格式化并检查 Nix 语法。'
+  ];
 }
 
 async function formatActiveDocument(): Promise<void> {
@@ -526,6 +641,25 @@ async function refreshWikiTemplatesOnFirstActivation(context: vscode.ExtensionCo
   }
 }
 
+async function refreshChineseMirrorUrls(context: vscode.ExtensionContext): Promise<void> {
+  try {
+    const urls = await fetchChineseMirrorUrls();
+    await context.globalState.update(chineseMirrorStateKey, urls);
+  } catch {
+    if (context.globalState.get<string[]>(chineseMirrorStateKey, []).length === 0) {
+      await context.globalState.update(chineseMirrorStateKey, fallbackChineseMirrorUrls);
+    }
+  }
+}
+
+async function fetchChineseMirrorUrls(): Promise<string[]> {
+  const pages = await Promise.all(chineseMirrorSources.map((source) => fetchText(source)));
+  const urls = pages.flatMap((page) => extractMatches(page, /https:\/\/[^\s"'<>|}]+\/nix-channels\/store/g));
+  const uniqueUrls = Array.from(new Set(urls.map((url) => url.replace(/[),.;]+$/u, ''))));
+
+  return uniqueUrls.length > 0 ? uniqueUrls : fallbackChineseMirrorUrls;
+}
+
 async function fetchWikiTemplates(): Promise<Template[]> {
   const templateGroups = await Promise.all(
     wikiSources.map(async (source) => {
@@ -560,7 +694,7 @@ function extractMatches(input: string, pattern: RegExp): string[] {
   let match: RegExpExecArray | null;
 
   while ((match = pattern.exec(input)) !== null) {
-    matches.push(match[1]);
+    matches.push(match[1] ?? match[0]);
   }
 
   return matches;

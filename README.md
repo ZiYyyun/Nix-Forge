@@ -58,6 +58,8 @@ Built-in fallback templates include:
 - Package Derivation
 - Dev Shell
 
+Inserted templates include short usage comments. If a Chinese VS Code language pack is installed, Nix Forge also adds Chinese source-switching notes and common binary cache mirror URLs. Without a Chinese language pack, those mirror notes are omitted.
+
 ### Fetch Templates from NixOS Wiki
 
 On first activation, Nix Forge can fetch Nix examples from the official NixOS Wiki and cache them locally.
@@ -69,6 +71,8 @@ Sources:
 - https://wiki.nixos.org/wiki/Home_Manager
 
 If the network is unavailable or Wiki markup changes, built-in templates remain available.
+
+For Chinese-language users, Nix Forge also tries to refresh common `/nix-channels/store` mirror URLs from the NixOS Wiki China page and major mirror help pages. Cached or fallback mirror URLs are only inserted as comments.
 
 Manual refresh:
 
