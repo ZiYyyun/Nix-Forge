@@ -1,0 +1,156 @@
+{
+  "name": "nix-forge",
+  "displayName": "Nix Forge",
+  "description": "Format Nix files and insert common Nix configuration templates.",
+  "version": "0.0.1",
+  "publisher": "ZiYyun",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZiYyyun/Nix-Forge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ZiYyyun/Nix-Forge/issues"
+  },
+  "homepage": "https://github.com/ZiYyyun/Nix-Forge#readme",
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters",
+    "Snippets"
+  ],
+  "activationEvents": [
+    "onLanguage:nix",
+    "onCommand:nixLanguageTools.insertTemplate",
+    "onCommand:nixLanguageTools.formatDocument",
+    "onCommand:nixLanguageTools.installFormatter",
+    "onCommand:nixLanguageTools.copyFormatterNixosSnippet",
+    "onCommand:nixLanguageTools.copyFormatterHomeManagerSnippet",
+    "onCommand:nixLanguageTools.refreshWikiTemplates"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "nix",
+        "aliases": [
+          "Nix",
+          "nix"
+        ],
+        "extensions": [
+          ".nix"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "nixLanguageTools.insertTemplate",
+        "title": "Nix: Insert Configuration Template",
+        "category": "Nix"
+      },
+      {
+        "command": "nixLanguageTools.formatDocument",
+        "title": "Nix-Forge: Format Document",
+        "category": "Nix"
+      },
+      {
+        "command": "nixLanguageTools.installFormatter",
+        "title": "Nix-Forge: Open Formatter Extension",
+        "category": "Nix"
+      },
+      {
+        "command": "nixLanguageTools.copyFormatterNixosSnippet",
+        "title": "Nix-Forge: Copy Formatter NixOS Snippet",
+        "category": "Nix"
+      },
+      {
+        "command": "nixLanguageTools.copyFormatterHomeManagerSnippet",
+        "title": "Nix-Forge: Copy Formatter Home Manager Snippet",
+        "category": "Nix"
+      },
+      {
+        "command": "nixLanguageTools.refreshWikiTemplates",
+        "title": "Nix-Forge: Refresh Templates from NixOS Wiki",
+        "category": "Nix"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "nixLanguageTools.formatDocument",
+        "key": "shift+alt+f",
+        "mac": "shift+alt+f",
+        "when": "editorTextFocus && editorLangId == nix"
+      },
+      {
+        "command": "nixLanguageTools.insertTemplate",
+        "key": "ctrl+alt+n",
+        "mac": "cmd+alt+n",
+        "when": "editorTextFocus && editorLangId == nix"
+      }
+    ],
+    "configuration": {
+      "title": "Nix Forge",
+      "properties": {
+        "nixLanguageTools.formatter.command": {
+          "type": "string",
+          "default": "auto",
+          "description": "Formatter command. Use 'auto' to try nixfmt, nixpkgs-fmt, and alejandra."
+        },
+        "nixLanguageTools.formatter.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra arguments passed to the formatter command."
+        },
+        "nixLanguageTools.formatter.useBuiltInFallback": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use Nix Forge's built-in indentation formatter when no external formatter command is available."
+        },
+        "nixLanguageTools.templates.updateFromWikiOnFirstActivation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Fetch and cache Nix template examples from the official NixOS Wiki the first time the extension activates."
+        },
+        "nixLanguageTools.templates.custom": {
+          "type": "array",
+          "default": [],
+          "description": "Additional templates shown by the insert template command.",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "body"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "@types/vscode": "1.92.0",
+    "typescript": "5.9.3"
+  }
+}
