@@ -121,7 +121,23 @@ Disable the built-in fallback formatter:
 }
 ```
 
-### Wiki Template Updates
+### Template Supported
+
+![alt text](PixPin_2026-08-01_14-00-03.png)
+
+- NixOS--Configuration
+- Flake--Moudule
+- Home-Manager--Moudule
+- Package Moudle
+- Custom Packaging Shell
+- Nix Shell 
+
+> Usage:
+  - Type `Ctrl` + `Shift` + `P`
+  - Select the option `Nix: Nix-Forge: Insert Configuration Template`
+  - Select the `Module` you need
+
+#### Wiki Template Updates
 
 Disable first-activation Wiki template fetching:
 
@@ -131,7 +147,7 @@ Disable first-activation Wiki template fetching:
 }
 ```
 
-### Custom Templates
+#### Custom Templates
 
 Add your own templates:
 
