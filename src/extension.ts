@@ -157,6 +157,37 @@ const builtInTemplates: Template[] = [
 `
   },
   {
+    label: 'Dotfiles',
+    description: 'Manage dotfiles with Home Manager',
+    body: `{ config, pkgs, ... }:
+
+{
+  home.username = "your-user";
+  home.homeDirectory = "/home/your-user";
+  home.stateVersion = "24.05";
+
+  # Link an existing file from this repository into your home directory.
+  home.file.".gitconfig".source = ./dotfiles/gitconfig;
+
+  # Generate a small dotfile directly from Nix.
+  home.file.".config/example/config.toml".text = ''
+    theme = "dark"
+    editor = "nvim"
+  '';
+
+  # XDG config files usually belong under ~/.config.
+  xdg.configFile."nvim/init.lua".source = ./dotfiles/nvim/init.lua;
+  xdg.configFile."starship.toml".source = ./dotfiles/starship.toml;
+
+  programs.git = {
+    enable = true;
+    userName = "Your Name";
+    userEmail = "you@example.com";
+  };
+}
+`
+  },
+  {
     label: 'Package Builder',
     description: 'Build a package with stdenv.mkDerivation',
     body: `{ lib, stdenv, fetchFromGitHub }:
@@ -393,6 +424,13 @@ function getChineseTemplateUsageLines(template: Template): string[] {
     return [
       '\u628a username\u3001homeDirectory \u548c stateVersion \u6539\u6210\u4f60\u7684\u5b9e\u9645\u7528\u6237\u914d\u7f6e\u3002',
       '\u5e38\u7528\u8f6f\u4ef6\u5199\u5728 home.packages\uff0c\u7a0b\u5e8f\u914d\u7f6e\u5199\u5728 programs.*\u3002'
+    ];
+  }
+
+  if (template.label.includes('Dotfiles')) {
+    return [
+      '\u7528 Home Manager \u58f0\u660e\u5f0f\u7ba1\u7406 dotfiles\uff1ahome.file \u9002\u5408\u653e\u5230\u4e3b\u76ee\u5f55\uff0cxdg.configFile \u9002\u5408\u653e\u5230 ~/.config\u3002',
+      'source \u7528\u6765\u94fe\u63a5\u4ed3\u5e93\u91cc\u7684\u6587\u4ef6\uff0ctext \u7528\u6765\u76f4\u63a5\u751f\u6210\u5c0f\u914d\u7f6e\u6587\u4ef6\u3002'
     ];
   }
 

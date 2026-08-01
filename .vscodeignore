@@ -5,3 +5,6 @@ node_modules/**
 .vscode/**
 .gitignore
 package-lock.json
+*.vsix
+PixPin_*.png
+images/PixPin_*.png

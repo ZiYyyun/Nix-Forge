@@ -2,18 +2,18 @@
   "name": "nix-forge",
   "displayName": "Nix Forge",
   "description": "Format Nix files and insert common Nix configuration templates.",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "ZiYyun",
   "icon": "images/icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ZiYyyun/Nix-Forge.git"
+    "url": "https://github.com/ZiYyyun/vscode-Nix-Forge.git"
   },
   "bugs": {
-    "url": "https://github.com/ZiYyyun/Nix-Forge/issues"
+    "url": "https://github.com/ZiYyyun/vscode-Nix-Forge/issues"
   },
-  "homepage": "https://github.com/ZiYyyun/Nix-Forge#readme",
+  "homepage": "https://github.com/ZiYyyun/vscode-Nix-Forge#readme",
   "engines": {
     "vscode": "^1.92.0"
   },

@@ -121,21 +121,45 @@ Disable the built-in fallback formatter:
 }
 ```
 
-### Template Supported
+### Template Supported / 支持的模板 / 対応テンプレート
 
-![alt text](PixPin_2026-08-01_14-00-03.png)
+English:
 
-- NixOS--Configuration
-- Flake--Moudule
-- Home-Manager--Moudule
-- Package Moudle
-- Custom Packaging Shell
-- Nix Shell 
+- System Packages: the most common `configuration.nix` package list.
+- NixOS Module: full module skeleton with `imports`, `options`, `config`, and `meta`.
+- Flake: `flake.nix` with inputs, packages, and a development shell.
+- Home Manager: user-level Home Manager configuration.
+- Dotfiles: manage files such as `.gitconfig`, Neovim config, and Starship config with Home Manager.
+- Package Builder: package skeleton based on `stdenv.mkDerivation`.
+- Dev Shell: standalone `mkShell` development environment.
 
-> Usage:
-  - Type `Ctrl` + `Shift` + `P`
-  - Select the option `Nix: Nix-Forge: Insert Configuration Template`
-  - Select the `Module` you need
+中文：
+
+- System Packages：最常用的 `configuration.nix` 软件包列表模板。
+- NixOS Module：包含 `imports`、`options`、`config`、`meta` 的完整模块骨架。
+- Flake：包含 inputs、packages、devShell 的 `flake.nix` 模板。
+- Home Manager：用户级 Home Manager 配置模板。
+- Dotfiles：用 Home Manager 管理 `.gitconfig`、Neovim、Starship 等 dotfiles。
+- Package Builder：基于 `stdenv.mkDerivation` 的打包模板。
+- Dev Shell：独立的 `mkShell` 开发环境模板。
+
+日本語：
+
+- System Packages: `configuration.nix` でよく使うシステムパッケージ一覧。
+- NixOS Module: `imports`、`options`、`config`、`meta` を含む NixOS モジュール雛形。
+- Flake: inputs、packages、devShell を含む `flake.nix` テンプレート。
+- Home Manager: ユーザー単位の Home Manager 設定。
+- Dotfiles: Home Manager で `.gitconfig`、Neovim、Starship などの dotfiles を管理するテンプレート。
+- Package Builder: `stdenv.mkDerivation` ベースのパッケージ作成テンプレート。
+- Dev Shell: `mkShell` を使う開発環境テンプレート。
+
+Usage / 用法 / 使い方:
+
+1. Press `Ctrl+Shift+P`.
+2. Select `Nix-Forge: Insert Configuration Template`.
+3. Choose the template you need.
+
+You can also press `Ctrl+Alt+N` in a `.nix` file.
 
 #### Wiki Template Updates
 
