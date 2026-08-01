@@ -67,35 +67,20 @@ const wikiSources = [
 
 const builtInTemplates: Template[] = [
   {
-    label: 'Built-in: Flake',
-    description: 'Basic flake.nix fallback',
-    body: `{
-  description = "My Nix flake";
+    label: 'System Packages',
+    description: 'Most common configuration.nix package list',
+    body: `{ config, pkgs, ... }:
 
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  };
-
-  outputs = { self, nixpkgs }:
-    let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; };
-    in
-    {
-      packages.\${system}.default = pkgs.hello;
-      devShells.\${system}.default = pkgs.mkShell {
-        packages = with pkgs; [
-          nil
-          nixfmt-rfc-style
-        ];
-      };
-    };
+{
+  environment.systemPackages = with pkgs; [
+    # Add packages installed system-wide here.
+  ];
 }
 `
   },
   {
-    label: 'Built-in: NixOS Module',
-    description: 'Official NixOS module structure fallback',
+    label: 'NixOS Module',
+    description: 'NixOS module with imports, options, config, and meta',
     body: `{ config, lib, pkgs, ... }:
 
 {
@@ -127,8 +112,35 @@ const builtInTemplates: Template[] = [
 `
   },
   {
-    label: 'Built-in: Home Manager',
-    description: 'Home Manager user config fallback',
+    label: 'Flake',
+    description: 'flake.nix with inputs, packages, and devShell',
+    body: `{
+  description = "My Nix flake";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  };
+
+  outputs = { self, nixpkgs }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      packages.\${system}.default = pkgs.hello;
+      devShells.\${system}.default = pkgs.mkShell {
+        packages = with pkgs; [
+          nil
+          nixfmt-rfc-style
+        ];
+      };
+    };
+}
+`
+  },
+  {
+    label: 'Home Manager',
+    description: 'Home Manager user configuration',
     body: `{ config, pkgs, ... }:
 
 {
@@ -145,8 +157,8 @@ const builtInTemplates: Template[] = [
 `
   },
   {
-    label: 'Built-in: Package Derivation',
-    description: 'stdenv.mkDerivation package fallback',
+    label: 'Package Builder',
+    description: 'Build a package with stdenv.mkDerivation',
     body: `{ lib, stdenv, fetchFromGitHub }:
 
 stdenv.mkDerivation rec {
@@ -170,8 +182,8 @@ stdenv.mkDerivation rec {
 `
   },
   {
-    label: 'Built-in: Dev Shell',
-    description: 'mkShell development environment fallback',
+    label: 'Dev Shell',
+    description: 'Development environment with mkShell',
     body: `{ pkgs ? import <nixpkgs> { } }:
 
 pkgs.mkShell {
@@ -206,6 +218,11 @@ export function activate(context: vscode.ExtensionContext) {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
       vscode.window.showWarningMessage('Open a Nix file before inserting a template.');
+      return;
+    }
+
+    if (editor.document.languageId !== 'nix') {
+      vscode.window.showWarningMessage('Nix Forge templates can only be inserted into Nix files.');
       return;
     }
 
@@ -351,6 +368,13 @@ function getTemplateHelpLines(template: Template, hasChineseLanguagePack: boolea
 }
 
 function getChineseTemplateUsageLines(template: Template): string[] {
+  if (template.label.includes('System Packages')) {
+    return [
+      '\u8fd9\u662f\u6700\u5e38\u7528\u7684 configuration.nix \u6a21\u677f\uff0c\u628a\u8981\u5168\u5c40\u5b89\u88c5\u7684\u8f6f\u4ef6\u5199\u8fdb environment.systemPackages\u3002',
+      '\u6bcf\u4e2a\u5305\u540d\u901a\u5e38\u76f4\u63a5\u5199\u6210 pkgs.xxx\uff0c\u4e5f\u53ef\u4ee5\u7ee7\u7eed\u4f7f\u7528 with pkgs \u8bed\u6cd5\u3002'
+    ];
+  }
+
   if (template.label.includes('Flake')) {
     return [
       '\u628a description \u6539\u6210\u9879\u76ee\u8bf4\u660e\uff0c\u628a system \u6539\u6210\u4f60\u7684\u5e73\u53f0\uff0c\u4f8b\u5982 x86_64-linux \u6216 aarch64-linux\u3002',
@@ -372,7 +396,7 @@ function getChineseTemplateUsageLines(template: Template): string[] {
     ];
   }
 
-  if (template.label.includes('Package Derivation')) {
+  if (template.label.includes('Package Builder')) {
     return [
       '\u628a pname\u3001version\u3001src\u3001hash \u548c meta \u6539\u6210\u76ee\u6807\u8f6f\u4ef6\u5305\u7684\u4fe1\u606f\u3002',
       'hash \u53ef\u4ee5\u5148\u7559\u7a7a\u6784\u5efa\u4e00\u6b21\uff0c\u518d\u7528 Nix \u7ed9\u51fa\u7684\u6b63\u786e sha256 \u66ff\u6362\u3002'
@@ -393,6 +417,10 @@ function getChineseTemplateUsageLines(template: Template): string[] {
 }
 
 function applyChineseTemplateEnhancements(template: Template, body: string, mirrors: MirrorStatus[]): string {
+  if (template.label.includes('System Packages')) {
+    return body.replace('{\n', `{\n${buildNixosMirrorBlock(mirrors, 2)}\n`);
+  }
+
   if (template.label.includes('NixOS Module')) {
     return body.replace('  config = {\n', `  config = {\n${buildNixosMirrorBlock(mirrors, 4)}\n`);
   }
