@@ -7,4 +7,3 @@ node_modules/**
 package-lock.json
 *.vsix
 PixPin_*.png
-images/PixPin_*.png
