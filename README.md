@@ -112,7 +112,8 @@ Nix Forge 的核心功能是快速插入常用 Nix 模板。按 `Ctrl+Shift+P` �
 - `Package Builder`：基于 `stdenv.mkDerivation` 的打包模板。
 - `Dev Shell`：独立的 `mkShell` 开发环境。
 
-如果检测到中文 VS Code 语言包，Nix Forge 会在 NixOS 和 Flake 模板中加入中文注释，以及测速后的二进制缓存镜像候选。`https://cache.nixos.org/` 会始终保留并启用，作为官方保底源。
+>[!NOTE] 关于大陆的网络问题
+> 如果检测到中文 VS Code 语言包，Nix Forge 会自动在 NixOS 和 Flake 模板中加入中文注释，以及测速后的国内源。`https://cache.nixos.org/` 会始终保留并启用，作为官方保底源。
 
 ### 格式化
 
