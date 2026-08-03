@@ -2,7 +2,7 @@
   "name": "nix-forge",
   "displayName": "Nix Forge",
   "description": "Format Nix files and insert common Nix configuration templates.",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "ZiYyun",
   "icon": "images/icon.png",
   "license": "MIT",
