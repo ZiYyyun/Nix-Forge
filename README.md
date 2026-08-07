@@ -141,7 +141,7 @@ Nix Forge can cache examples from the official NixOS Wiki, but Wiki snippets are
 
 >[!NOTE] 关于大陆网络
 >
-> 换源模板已经拆成单独的 `NixOS: Binary Cache Mirrors (China)` / `Flake: Binary Cache Mirrors (China)`。只有检测到中文 VS Code 语言包时才显示，而且不会再混进普通软件包模板、module 模板或 flake 模板。
+> 中文语言包环境下会额外显示 `NixOS: Configure Binary Cache (China)` / `Flake: Configure Binary Cache (China)`，用于配置国内二进制缓存源，并保留官方 cache 作为备用。
 
 ### 导入跳转
 

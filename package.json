@@ -2,7 +2,7 @@
   "name": "nix-forge",
   "displayName": "Nix Forge",
   "description": "Insert focused Nix templates, format Nix files, and jump to local Nix imports.",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "publisher": "ZiYyun",
   "icon": "images/icon.png",
   "license": "MIT",

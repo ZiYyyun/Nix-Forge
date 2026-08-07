@@ -240,8 +240,8 @@ async function buildTemplateBody(context: vscode.ExtensionContext, template: Tem
 function getChineseOnlyTemplates(): Template[] {
   return [
     {
-      label: 'NixOS: Binary Cache Mirrors (China)',
-      description: '\u5355\u72ec\u63d2\u5165\u6362\u6e90\u914d\u7f6e\uff0c\u4e0d\u4f1a\u6df7\u8fdb\u5176\u4ed6\u6a21\u677f',
+      label: 'NixOS: Configure Binary Cache (China)',
+      description: '\u914d\u7f6e nix.settings.substituters\uff0c\u5e76\u4fdd\u7559\u5b98\u65b9 cache \u4f5c\u4e3a\u5907\u7528',
       body: `{ config, pkgs, ... }:
 
 {
@@ -251,8 +251,8 @@ __NIXOS_MIRROR_BLOCK__
       tags: ['china-mirror']
     },
     {
-      label: 'Flake: Binary Cache Mirrors (China)',
-      description: '\u5355\u72ec\u63d2\u5165 flake nixConfig \u6362\u6e90\u914d\u7f6e',
+      label: 'Flake: Configure Binary Cache (China)',
+      description: '\u914d\u7f6e flake nixConfig.substituters \u548c trusted public keys',
       body: `{
 __FLAKE_MIRROR_BLOCK__
 }
