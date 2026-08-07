@@ -5,7 +5,7 @@
 <h1 align="center">Nix Forge</h1>
 
 <p align="center">
-  Nix templates, import navigation, and formatting for Visual Studio Code.
+  Focused Nix templates, local import navigation, and formatting for Visual Studio Code.
 </p>
 
 <p align="center">
@@ -37,30 +37,39 @@
 
 ## English
 
-### Template First
+### Focused Templates
 
-Nix Forge is built around fast template insertion. Open the command palette with `Ctrl+Shift+P`, run `Nix-Forge: Insert Configuration Template`, and choose the Nix pattern you need.
+Open the command palette with `Ctrl+Shift+P`, run `Nix-Forge: Insert Configuration Template`, or press `Ctrl+Alt+N` in a `.nix` file.
 
-You can also press `Ctrl+Alt+N` in a `.nix` file.
+The picker is intentionally small and practical. The first template is the common NixOS package list:
+
+```nix
+{ config, pkgs, ... }:
+
+{
+  environment.systemPackages = with pkgs; [
+
+  ];
+}
+```
 
 Built-in templates:
 
-- `System Packages`: the most common `configuration.nix` package list.
-- `NixOS Module`: a module skeleton with `imports`, `options`, `config`, and `meta`.
-- `Flake`: a `flake.nix` with inputs, packages, and a development shell.
-- `Home Manager`: a user-level Home Manager configuration.
-- `Dotfiles`: manage `.gitconfig`, Neovim, Starship, and other dotfiles with Home Manager.
-- `Package Builder`: a package skeleton based on `stdenv.mkDerivation`.
-- `Dev Shell`: a standalone `mkShell` development environment.
+- `NixOS: Install System Packages`: add system-wide packages in `configuration.nix`.
+- `NixOS: Import Modules`: create an `imports = [ ... ];` list for local modules.
+- `NixOS: Basic Module`: reusable module skeleton with commented `options`, `config`, and `meta`.
+- `Flake: NixOS Configuration`: `flake.nix` skeleton for `nixosConfigurations`.
+- `Home Manager: User Packages`: user-level `home.packages`.
+- `Home Manager: Dotfiles`: manage repository dotfiles through `home.file` and `xdg.configFile`.
+- `Package: mkDerivation`: package a source project.
+- `Shell: mkShell`: standalone development shell.
 
-If a Chinese VS Code language pack is installed, Nix Forge adds Chinese comments and tested Nix binary cache mirror candidates to NixOS and Flake templates. `https://cache.nixos.org/` is always kept enabled as the official fallback.
+Chinese mirror snippets are separate templates and only appear when a Chinese VS Code language pack is installed. They are no longer injected into unrelated templates.
 
 ### Import Navigation
 
 Hold `Ctrl` and click a local Nix path, or use `F12` / `Go to Definition`.
 
-Supported examples:
-
 ```nix
 {
   imports = [
@@ -68,79 +77,75 @@ Supported examples:
     ./modules/desktop
     ../shared/users.nix
   ];
-
-  myModule = import ./modules/my-module.nix;
 }
 ```
 
-Nix Forge resolves existing files, appends `.nix` when useful, and opens `default.nix` for directory paths. Dynamic expressions such as `<nixpkgs>`, `${...}`, and `modulesPath + "..."` are intentionally left to full Nix language servers.
+Nix Forge resolves existing files, appends `.nix` when useful, and opens `default.nix` for directory paths. Dynamic expressions such as `<nixpkgs>`, `${...}`, and `modulesPath + "..."` are left to full Nix language servers.
 
 ### Formatting
 
 Use `Shift+Alt+F` or run `Nix-Forge: Format Document`.
 
-Nix Forge tries external formatters first:
+Nix Forge tries `nixfmt`, `nixpkgs-fmt`, and `alejandra` first. If none are available, it uses a built-in indentation formatter.
 
-- `nixfmt`
-- `nixpkgs-fmt`
-- `alejandra`
+### Wiki References
 
-If none are available, it falls back to the built-in indentation formatter, so basic formatting still works on Windows, WSL, and remote machines without a Nix toolchain in `$PATH`.
-
-### Settings
+Nix Forge can cache examples from the official NixOS Wiki, but Wiki snippets are hidden by default to keep the picker usable.
 
 ```json
 {
-  "nixLanguageTools.formatter.command": "auto",
-  "nixLanguageTools.formatter.args": [],
-  "nixLanguageTools.formatter.useBuiltInFallback": true,
-  "nixLanguageTools.templates.updateFromWikiOnFirstActivation": true
+  "nixLanguageTools.templates.updateFromWikiOnFirstActivation": false,
+  "nixLanguageTools.templates.showWikiTemplates": false
 }
 ```
 
-Custom templates:
+### Project Layout
 
-```json
-{
-  "nixLanguageTools.templates.custom": [
-    {
-      "label": "My NixOS Module",
-      "description": "Project-specific module",
-      "body": "{ config, pkgs, ... }:\n\n{\n  environment.systemPackages = with pkgs; [ ];\n}\n"
-    }
-  ]
-}
-```
+- `src/extension.ts`: activation entry.
+- `src/templates.ts`: template picker and built-in templates.
+- `src/formatter.ts`: formatting provider and formatter command handling.
+- `src/navigation.ts`: Ctrl+Click / Go to Definition for local Nix paths.
+- `src/mirrors.ts`: Chinese binary cache mirror detection and snippet building.
+- `src/wikiTemplates.ts`: optional Wiki reference cache.
 
 ---
 
 ## 中文
 
-### 代码片段优先
+### 聚焦常用模板
 
-Nix Forge 的核心功能是快速插入常用 Nix 模板。按 `Ctrl+Shift+P` 打开命令面板，运行 `Nix-Forge: Insert Configuration Template`，然后选择需要的模板。
+按 `Ctrl+Shift+P` 打开命令面板，运行 `Nix-Forge: Insert Configuration Template`，或者在 `.nix` 文件里按 `Ctrl+Alt+N`。
 
-也可以在 `.nix` 文件里直接按 `Ctrl+Alt+N`。
+模板列表现在会保持精简。第一项就是最常见的 NixOS 安装软件包模板：
+
+```nix
+{ config, pkgs, ... }:
+
+{
+  environment.systemPackages = with pkgs; [
+
+  ];
+}
+```
 
 内置模板：
 
-- `System Packages`：最常用的 `configuration.nix` 软件包列表。
-- `NixOS Module`：包含 `imports`、`options`、`config`、`meta` 的模块骨架。
-- `Flake`：包含 inputs、packages、devShell 的 `flake.nix` 模板。
-- `Home Manager`：用户级 Home Manager 配置。
-- `Dotfiles`：用 Home Manager 管理 `.gitconfig`、Neovim、Starship 等 dotfiles。
-- `Package Builder`：基于 `stdenv.mkDerivation` 的打包模板。
-- `Dev Shell`：独立的 `mkShell` 开发环境。
+- `NixOS: Install System Packages`：在 `configuration.nix` 里添加系统级软件包。
+- `NixOS: Import Modules`：创建本地 module 的 `imports = [ ... ];` 列表。
+- `NixOS: Basic Module`：可复用 module 骨架，`options`、`config`、`meta` 都有注释示例。
+- `Flake: NixOS Configuration`：用于 `nixosConfigurations` 的 `flake.nix` 骨架。
+- `Home Manager: User Packages`：添加用户级 `home.packages`。
+- `Home Manager: Dotfiles`：用 `home.file` 和 `xdg.configFile` 管理 dotfiles。
+- `Package: mkDerivation`：打包源码项目。
+- `Shell: mkShell`：独立开发环境。
 
->[!NOTE] 关于大陆的网络问题
+>[!NOTE] 关于大陆网络
 >
-> 如果检测到中文 VS Code 语言包，Nix Forge 会自动在 NixOS 和 Flake 模板中加入中文注释，以及测速后的国内源。并且官方镜像 `https://cache.nixos.org/` 会始终保留并启用，无需担心换源失败。
+> 换源模板已经拆成单独的 `NixOS: Binary Cache Mirrors (China)` / `Flake: Binary Cache Mirrors (China)`。只有检测到中文 VS Code 语言包时才显示，而且不会再混进普通软件包模板、module 模板或 flake 模板。
 
 ### 导入跳转
 
 按住 `Ctrl` 点击本地 Nix 路径，或者使用 `F12` / `转到定义`。
-
-支持示例：
 
 ```nix
 {
@@ -149,8 +154,6 @@ Nix Forge 的核心功能是快速插入常用 Nix 模板。按 `Ctrl+Shift+P` �
     ./modules/desktop
     ../shared/users.nix
   ];
-
-  myModule = import ./modules/my-module.nix;
 }
 ```
 
@@ -160,66 +163,64 @@ Nix Forge 会解析已经存在的文件；必要时会尝试补 `.nix` 后缀�
 
 按 `Shift+Alt+F`，或者运行 `Nix-Forge: Format Document`。
 
-Nix Forge 会优先尝试外部格式化器：
+Nix Forge 会优先尝试 `nixfmt`、`nixpkgs-fmt`、`alejandra`。如果都不可用，就使用内置缩进格式化器。
 
-- `nixfmt`
-- `nixpkgs-fmt`
-- `alejandra`
+### Wiki 参考
 
-如果都不可用，就使用内置缩进格式化器。因此即使 Windows、WSL 或远程环境里没有完整 Nix 工具链，也能做基础格式化。
-
-### 设置
+Nix Forge 仍然可以从官方 NixOS Wiki 缓存参考片段，但默认不显示在模板列表里，避免把选择器塞爆。
 
 ```json
 {
-  "nixLanguageTools.formatter.command": "auto",
-  "nixLanguageTools.formatter.args": [],
-  "nixLanguageTools.formatter.useBuiltInFallback": true,
-  "nixLanguageTools.templates.updateFromWikiOnFirstActivation": true
+  "nixLanguageTools.templates.updateFromWikiOnFirstActivation": false,
+  "nixLanguageTools.templates.showWikiTemplates": false
 }
 ```
 
-自定义模板：
+### 代码结构
 
-```json
-{
-  "nixLanguageTools.templates.custom": [
-    {
-      "label": "My NixOS Module",
-      "description": "Project-specific module",
-      "body": "{ config, pkgs, ... }:\n\n{\n  environment.systemPackages = with pkgs; [ ];\n}\n"
-    }
-  ]
-}
-```
+- `src/extension.ts`：扩展启动入口。
+- `src/templates.ts`：模板选择器和内置模板。
+- `src/formatter.ts`：格式化能力。
+- `src/navigation.ts`：本地 Nix 路径 Ctrl+Click / 转到定义。
+- `src/mirrors.ts`：国内二进制缓存源测速和换源片段。
+- `src/wikiTemplates.ts`：可选 Wiki 参考缓存。
 
 ---
 
 ## 日本語
 
-### テンプレート中心
+### 実用的なテンプレート
 
-Nix Forge は、よく使う Nix テンプレートをすばやく挿入するための拡張機能です。`Ctrl+Shift+P` でコマンドパレットを開き、`Nix-Forge: Insert Configuration Template` を実行してテンプレートを選びます。
+`Ctrl+Shift+P` でコマンドパレットを開き、`Nix-Forge: Insert Configuration Template` を実行します。`.nix` ファイルでは `Ctrl+Alt+N` でも使えます。
 
-`.nix` ファイルでは `Ctrl+Alt+N` でも実行できます。
+テンプレート一覧は小さく、実用的なものに絞っています。最初の項目は一般的な NixOS パッケージ一覧です。
 
-組み込みテンプレート：
+```nix
+{ config, pkgs, ... }:
 
-- `System Packages`: `configuration.nix` でよく使うシステムパッケージ一覧。
-- `NixOS Module`: `imports`、`options`、`config`、`meta` を含むモジュール雛形。
-- `Flake`: inputs、packages、devShell を含む `flake.nix` テンプレート。
-- `Home Manager`: ユーザー単位の Home Manager 設定。
-- `Dotfiles`: Home Manager で `.gitconfig`、Neovim、Starship などを管理するテンプレート。
-- `Package Builder`: `stdenv.mkDerivation` ベースのパッケージ作成テンプレート。
-- `Dev Shell`: `mkShell` を使う開発環境テンプレート。
+{
+  environment.systemPackages = with pkgs; [
 
-中国語の VS Code 言語パックが入っている場合、NixOS と Flake テンプレートには中国語コメントと、速度確認済みの Nix バイナリキャッシュ候補が追加されます。`https://cache.nixos.org/` は公式フォールバックとして常に有効です。
+  ];
+}
+```
+
+Built-in templates:
+
+- `NixOS: Install System Packages`: `configuration.nix` にシステムパッケージを追加。
+- `NixOS: Import Modules`: ローカル module 用の `imports = [ ... ];`。
+- `NixOS: Basic Module`: `options`、`config`、`meta` を含む module 雛形。
+- `Flake: NixOS Configuration`: `nixosConfigurations` 用の `flake.nix`。
+- `Home Manager: User Packages`: ユーザー単位の `home.packages`。
+- `Home Manager: Dotfiles`: `home.file` と `xdg.configFile` で dotfiles を管理。
+- `Package: mkDerivation`: ソースプロジェクトをパッケージ化。
+- `Shell: mkShell`: 開発シェル。
+
+中国向けミラー設定は専用テンプレートに分離されています。
 
 ### インポート移動
 
 `Ctrl` を押しながらローカル Nix パスをクリックするか、`F12` / `Go to Definition` を使います。
-
-対応例：
 
 ```nix
 {
@@ -228,32 +229,13 @@ Nix Forge は、よく使う Nix テンプレートをすばやく挿入する�
     ./modules/desktop
     ../shared/users.nix
   ];
-
-  myModule = import ./modules/my-module.nix;
 }
 ```
 
-既存ファイルを解決し、必要に応じて `.nix` を補完します。ディレクトリを指す場合は `default.nix` を開きます。`<nixpkgs>`、`${...}`、`modulesPath + "..."` のような動的式は、完全な Nix language server に任せる設計です。
+既存ファイルを解決し、必要に応じて `.nix` を補完します。ディレクトリの場合は `default.nix` を開きます。
 
 ### フォーマット
 
 `Shift+Alt+F`、または `Nix-Forge: Format Document` を実行します。
 
-Nix Forge はまず外部フォーマッターを試します：
-
-- `nixfmt`
-- `nixpkgs-fmt`
-- `alejandra`
-
-利用できない場合は、内蔵のインデントフォーマッターにフォールバックします。
-
-### 設定
-
-```json
-{
-  "nixLanguageTools.formatter.command": "auto",
-  "nixLanguageTools.formatter.args": [],
-  "nixLanguageTools.formatter.useBuiltInFallback": true,
-  "nixLanguageTools.templates.updateFromWikiOnFirstActivation": true
-}
-```
+Nix Forge は `nixfmt`、`nixpkgs-fmt`、`alejandra` を試し、利用できない場合は内蔵フォーマッターを使います。

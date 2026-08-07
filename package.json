@@ -1,8 +1,8 @@
 {
   "name": "nix-forge",
   "displayName": "Nix Forge",
-  "description": "Format Nix files and insert common Nix configuration templates.",
-  "version": "0.0.7",
+  "description": "Insert focused Nix templates, format Nix files, and jump to local Nix imports.",
+  "version": "0.0.8",
   "publisher": "ZiYyun",
   "icon": "images/icon.png",
   "license": "MIT",
@@ -115,8 +115,13 @@
         },
         "nixLanguageTools.templates.updateFromWikiOnFirstActivation": {
           "type": "boolean",
-          "default": true,
-          "description": "Fetch and cache Nix template examples from the official NixOS Wiki the first time the extension activates."
+          "default": false,
+          "description": "Fetch and cache Nix template references from the official NixOS Wiki the first time the extension activates."
+        },
+        "nixLanguageTools.templates.showWikiTemplates": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show cached NixOS Wiki reference templates in the template picker. Disabled by default to keep the picker focused."
         },
         "nixLanguageTools.templates.custom": {
           "type": "array",
